@@ -1,0 +1,105 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
+
+# Step 1: Read the dataset
+diabetes_data = pd.read_csv('diabetes.csv')
+
+# Step 2: Preprocess the data
+# Check if columns exist before dropping
+columns_to_drop = ['RowNumber', 'Surname', 'CustomerId']
+columns_to_drop = [col for col in columns_to_drop if col in diabetes_data.columns]
+
+if columns_to_drop:
+    diabetes_data = diabetes_data.drop(columns_to_drop, axis=1)
+else:
+    print("Columns not found in the dataset: ", columns_to_drop)
+
+# Step 3: Handle missing values
+diabetes_data[['Glucose', 'BloodPressure', 'SkinThickness', 'Insulin', 'BMI']] = diabetes_data[['Glucose', 'BloodPressure', 'SkinThickness', 'Insulin', 'BMI']].replace(0, np.NaN)
+diabetes_data['Glucose'].fillna(diabetes_data['Glucose'].mean(), inplace=True)
+diabetes_data['BloodPressure'].fillna(diabetes_data['BloodPressure'].mean(), inplace=True)
+diabetes_data['SkinThickness'].fillna(diabetes_data['SkinThickness'].median(), inplace=True)
+diabetes_data['Insulin'].fillna(diabetes_data['Insulin'].median(), inplace=True)
+diabetes_data['BMI'].fillna(diabetes_data['BMI'].median(), inplace=True)
+
+# Step 4: Split the data into features (X) and target (y)
+X = diabetes_data.drop(['Outcome'], axis=1)
+y = diabetes_data['Outcome']
+
+# Step 5: Normalize the data
+sc_X = StandardScaler()
+X = pd.DataFrame(sc_X.fit_transform(X), columns=X.columns)
+
+# Step 6: Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1/3, random_state=42, stratify=y)
+
+# Step 7: Train the KNN model
+knn = KNeighborsClassifier(11)  # You can choose the best k based on your analysis
+knn.fit(X_train, y_train)
+
+# Step 8: Make predictions and evaluate the model
+y_pred = knn.predict(X_test)
+
+
+# Compute confusion matrix
+conf_matrix = confusion_matrix(y_test, y_pred)
+sns.heatmap(conf_matrix, annot=True, cmap="YlGnBu", fmt='g')
+plt.title('Confusion Matrix')
+plt.ylabel('Actual label')
+plt.xlabel('Predicted label')
+
+# Calculate accuracy
+accuracy = accuracy_score(y_test, y_pred)
+print("Accuracy:", accuracy)
+
+# Calculate error rate
+error_rate = 1 - accuracy
+print("Error Rate:", error_rate)
+
+# Calculate precision and recall
+classification_rep = classification_report(y_test, y_pred)
+print("Precision and Recall:\n", classification_rep)
+
+# Visualize accuracy, error rate, precision, and recall
+plt.figure(figsize=(10, 5))
+plt.subplot(121)
+sns.barplot(x=['Accuracy', 'Error Rate'], y=[accuracy, error_rate])
+plt.title('Model Accuracy and Error Rate')
+
+
+
+# Split the classification report into lines
+classification_lines = classification_rep.split('\n')
+
+# Extract precision and recall lines
+precision_recall_lines = classification_lines[2:4]
+
+# Split the lines into columns and remove empty strings
+precision_recall_data = [line.split() for line in precision_recall_lines if line]
+
+# Create a DataFrame
+precision_recall_df = pd.DataFrame(precision_recall_data, columns=['Metric', 'Precision', 'Recall', 'f1-score', 'support'])
+
+# Remove the last row (support) if present
+if len(precision_recall_df) == 3:
+    precision_recall_df = precision_recall_df.iloc[:-1]
+
+# Convert "Precision" and "Recall" columns to numeric
+precision_recall_df['Precision'] = pd.to_numeric(precision_recall_df['Precision'])
+precision_recall_df['Recall'] = pd.to_numeric(precision_recall_df['Recall'])
+
+# Plot precision and recall
+plt.subplot(122)
+sns.barplot(x='Metric', y='Precision', data=precision_recall_df)
+plt.title('Precision and Recall')
+plt.tight_layout()
+plt.show()
+
+
+
